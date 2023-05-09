@@ -1,0 +1,184 @@
+####################################################################################################################
+####################################################################################################################
+####################################################################################################################
+#Error in svd(c) :  'x' に無限値か欠測値があります 
+
+#install.packages("remotes")
+#remotes::install_github("indenkun/infun")
+library(infun)
+options(max.print=30000)
+anyNA(topix100)
+which(is.infinite(topix100$company_code) %in% 'TRUE')
+which(is.infinite(topix100$stock_price) %in% 'TRUE')
+which(is.infinite(topix100$equity_ratio) %in% 'TRUE')
+which(is.infinite(topix100$foreign_demand) %in% 'TRUE')
+which(is.infinite(topix100$per) %in% 'TRUE')
+which(is.infinite(topix100$pbr) %in% 'TRUE')
+infun::find.not.numeric.value(topix100$company_code)
+infun::find.not.numeric.value(topix100$stock_price)
+infun::find.not.numeric.value(topix100$equity_ratio)
+infun::find.not.numeric.value(topix100$foreign_demand)
+infun::find.not.numeric.value(topix100$per)
+infun::find.not.numeric.value(topix100$pbr)
+
+#色々調べてみる。
+#https://stackoverflow.com/questions/67673546/error-in-svdc-infinite-or-missing-values-in-x-when-using-synth-in-r
+#I encountered the same issue, and the same as you did I confirmed there is no missing value or all 0's in my data set. Later I realized this is caused by optimization algorithm used in generating weights. One thing you can try is to add argument "optimxmethod='All'" in synth function. This will try all available methods and report you the one with best performance.
+#https://rdrr.io/cran/tidysynth/src/R/synth.R
+#https://github.com/cran/Synth/blob/master/R/synth.R
+#https://www.rdocumentation.org/packages/tidysynth/versions/0.1.0/topics/synth_method
+#optimxmethod。使用する最適化アルゴリズムを指定する文字列ベクトル。使用可能な値は、現在 optimx 関数で実装されているすべての最適化アルゴリズムです (詳細はこの関数を参照してください)。このリストには現在 c("Nelder-Mead", 'BFGS', 'CG', 'L-BFGS-B', 'nlm', 'nlminb', 'spg', and 'ucminf") が含まれています。複数のアルゴリズムが指定された場合、synth は選択されたすべてのアルゴリズムで最適化を実行し、最も性能の良い方法の結果を返します。デフォルトは c("Nelder-Mead", "BFGS")です。また、「All」を指定すると、optimxに含まれるすべてのアルゴリズムで結果を実行します。
+#https://cran.r-project.org/web/packages/Synth/Synth.pdf
+#c("Nelder-Mead’, ’BFGS’)がデフォルト。
+#5803,7974,1963でエラーが出た。"Nelder-Mead’を加えることでエラーは解消した。5332でだめだった。どうしよう。
+#c(4208 5631 6902 4043)andc(5108, 4631, 6473, 4528)の4208でc("Nelder-Mead’, ’BFGS’,)エラー。#"Nelder-Mead’, ’BFGS’, ’CG’, ’L-BFGS-B’,nlm,nlminb,spg,ucminfで’L-BFGS-B’,nlm,nlminb,でうまくいった。
+#c(4911 3401 7201 7735)andc(5108, 4631, 6473, 4528)の3401でc("L-BFGS-B’,)エラー。#’Nelder-Mead,BFGS’,CG,L-BFGS-B,nlm,nlminb,spg,ucminfでnlm,nlminb,でうまくいった。
+#c(5108, 4631, 6473, 4528)の4528でc("nlm’,)エラー。#’Nelder-Mead,BFGS’,CG,L-BFGS-B,nlm,nlminb,spg,ucminfでNelder-Mead,BFGS,CG,L-BFGS-B,nlminbでうまくいった。
+#(1802 5411 7751 6506)andc(5108, 4631, 6473, 4528)の5411 でc("Nelder-Mead","nlminb")エラー。#’Nelder-Mead,BFGS’,CG,L-BFGS-B,nlm,nlminb,spg,ucminfで,BFGS,nlmでうまくいった。
+#(1802 5411 7751 6506)andc(5108, 4631, 6473, 4528)をc("Nelder-Mead",BFGS,nlm)でやると、時間はそれぞれ(11,10,44,42,51,25,23)だった。
+#(1802 5411 7751 6506)andc(5108, 4631, 6473, 4528)をc("Nelder-Mead",BFGS)でやると、時間はそれぞれ    (6, 9, 34,37,36,13,23,21)だった。
+#(1802 5411 7751 6506)andc(5108, 4631, 6473, 4528)をc("Nelder-Mead",BFGS,nlm)でやると、perとpbrをなくして、時間はそれぞれ    (45, 22, 29,50,,,,)。むしろ時間かかる。
+
+
+
+#同じ時系列データを取ってきたりしてないよな
+topix100$stock_price[which(duplicated(topix100$stock_price))]
+View(topix100 %>%group_by(stock_price) %>%filter(n()>1))
+View(topix100 %>%group_by(stock_price_original) %>%filter(n()>1))
+topix100 %>%filter(stock_price_original==3605.0)
+
+
+#エラーをスキップしてみる。
+#https://ai-trend.jp/programming/r-beginner/try-back-from-error/
+#https://code-examples.net/ja/q/d68889
+#https://stats.biopapyrus.jp/r/devel/try.html
+#https://eerfstartup.hatenablog.jp/entry/2017/05/28/171850
+
+
+#control unitsの数を減らしたら、かなりエラーが減った。
+#今回はランダムで絞ったけど、業種で絞るのが良いかも。
+#ここが問題。
+
+
+
+
+sdsd<-22
+kansuu<-function(){
+  #c('hbh')*c('hbjbj')
+  (i+3) %>% print()
+  (sdsd*2) %>% print()
+  print('jbdbfj')
+  print('erayhrs')
+}
+
+
+for (i in 1:4){
+  e<-try( 
+    kansuu(),
+    silent=FALSE
+  )
+  if( class(e) == "try-error") {
+    print('error')
+  }else{
+    print('success')
+  }
+}
+
+
+we<-data.frame()
+se<-data.frame(name1=c(2,1,6),name2=c(4,9,6),name3=c(3,7,6))
+tryCatch({
+  print('tyty')
+  we<-rbind(we, data.frame(name1=c(8,7,6),name2=c(8,4,6),name3=c(1,7,6)) )
+  we %>% print
+  se<-rbind(se, data.frame(name1=c(8,7,6),name2=c(8,4,6),name3=c(1,7,6)) )
+  se %>% print
+  C('h')*6
+  print('asas')
+}, 
+error = function(e) {
+  print('er')
+},
+warning = function(e) {
+  print('wa')
+},
+finnaly = {
+  #print('fin')
+},
+silent = TRUE
+)
+
+
+
+aq<-data.frame(ddd=c('fg','yu','er'),www=c('qq','aa','ss'))
+aq<-aq %>% filter(ddd %in% c('yu', 'er'))
+
+
+
+
+####################################################
+####################################################
+####################################################
+ppppp<-data.frame(www=c(5, 7, 8 ,8, 2, 4, 9, 9, 9), sss=c(4,6,34,22,13,77,55,33,34))
+#ppppp <-ppppp[3:length(ppppp)]
+ppppp %>% filter(www>= ppppp$www[order(ppppp$www, decreasing=T)[1]])
+sort(ppppp$www)
+
+
+name <- c("Yamada", "Tanaka", "Kawashita", "Nakayama", "Abe")
+math <- c(46, 34, 90, 54, 35)
+english <- c(75, 90, 54, 65, 40)
+science <- c(80, 50, 43, 90, 30)
+data <- data.frame(name, math, english, science)
+data[order(data$math), ]
+
+(data[,-1] %>% as.matrix() )%*% (c(0.3, 0.4 ,0.3) %>% as.matrix() )
+
+
+
+#########################################
+#########################################
+#########################################
+www<-66
+for (l in 1:4){
+  tryCatch({
+    print(sdfgsd)
+  },
+  error=function(e){
+    www<-1+www
+    print('rrr')
+    print(www)
+  },
+  warning=function(e){
+    print('qqq')
+  })
+}
+
+#########################################
+#########################################
+#########################################
+topix100$stock_price %>% length()
+topix100$stock_price %>% unique() %>% length()
+topix100$company_code %>% unique() %>% length()
+topix100$stock_price[topix100$stock_price %>% duplicated()]
+duplicated(c(8,4,5,7,3,7))
+topix100 %>% group_by(stock_price) %>% filter(n()>1)
+topix100 %>% filter(stock_price %in% ((topix100 %>% pull(stock_price))[topix100 %>% pull(stock_price) %>% duplicated()])) %>% pull(stock_price)
+runif(100, -0.0001, 0.0001) 
+lll<-data.frame(qqq=c(7.66666,5.55555,6.33333,2.44444,4.88888),ppp=c(22.444444,53.55555,64.66666,22.77777,44.99999))
+lll %>% dplyr::mutate(qqq=(lll$qqq + runif(nrow(lll), -0.0001, 0.0001)))
+#########################################
+#########################################
+#########################################
+data.frame(rrr=c(7,6,54,23,12), ooo=c(56,34,56,7,9)) %>% arrange(order(match(rrr, c(7,6,54,12,23))))
+match(data.frame(rrr=c(7,6,54,23,12), ooo=c(56,34,56,7,9))$rrr, c(7,6,54,12,23))
+data.frame(rrr=c(7,6,54,23,12), ooo=c(56,34,56,7,9)) %>% arrange(order(c(1,2,3,5,4)))
+data.frame(rrr=c(7,6,54,23,12), ooo=c(56,34,56,7,9)) %>% arrange(c(1,2,3,5,4))
+match(c(4528,4631,5108,6473),c(5108,4631,6473,4528))
+order(match(c(4528,4631,5108,6473),c(5108,4631,6473,4528)), decreasing = TRUE)
+order(match(c(4528,4631,5108,6473),c(5108,4631,6473,4528)), decreasing = FALSE)
+data.frame(rrr=c(7,6,54,23), ooo=c(56,34,56,7), vvv=c(4528,4631,5108,6473)) %>% arrange(match(c(4528,4631,5108,6473),c(5108,4631,6473,4528)))
+order(c(4528,4631,5108,6473), decreasing = TRUE)
+order(c(4,2,1,3), decreasing = TRUE)
+order(c(4,2,1,3), decreasing = FALSE)
+sort(c(5,3,6,9,2,1,5))
